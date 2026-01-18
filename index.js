@@ -233,7 +233,7 @@ async function initializeShelves(user, numberOfShelves, defaultCapacity) {
         }
     }
     
-    // Обновляем вместимость существующих полок, если изменилась
+    // Обновляем вместимость 
     for (const shelf of existingShelves) {
         if (shelf.capacity !== defaultCapacity) {
             shelf.capacity = defaultCapacity;
@@ -258,7 +258,7 @@ async function distributeBooksToShelves(books, user) {
         usedPages: 0
     }));
     
-    // Распределяем книги, которые уже привязаны к полкам
+   
     for (const book of books) {
         if (book.shelfId) {
             const shelfData = shelvesData.find(s => s.id === book.shelfId);
@@ -269,19 +269,19 @@ async function distributeBooksToShelves(books, user) {
         }
     }
     
-    // Распределяем книги без привязки к полкам
+   
     const unassignedBooks = books.filter(book => !book.shelfId);
     const sortedBooks = [...unassignedBooks].sort((a, b) => a.title.localeCompare(b.title, 'ru'));
     
     for (const book of sortedBooks) {
         let placed = false;
-        // Пытаемся найти полку с достаточным местом
+        
         for (const shelfData of shelvesData) {
             if (shelfData.usedPages + book.pages <= shelfData.capacity) {
                 shelfData.books.push(book);
                 shelfData.usedPages += book.pages;
                 placed = true;
-                // Обновляем shelfId в базе данных
+               
                 await Book.update({ shelfId: shelfData.id }, { where: { id: book.id } });
                 book.shelfId = shelfData.id;
                 break;
@@ -316,7 +316,7 @@ app.get('/api/books', auth, async function(req, res) {
             order: [['title', 'ASC']]
         });
         
-        // Получаем настройки полок (для обратной совместимости)
+        // Получаем настройки полок 
         let shelfSettings = await ShelfSettings.findOne({ where: { user: user } });
         if (!shelfSettings) {
             // Создаем настройки по умолчанию
@@ -327,7 +327,7 @@ app.get('/api/books', auth, async function(req, res) {
             });
         }
         
-        // Инициализируем полки только если их нет (для новых пользователей)
+        // Инициализируем полки, если их нет!!!!
         const existingShelves = await Shelf.findAll({ where: { user: user } });
         if (existingShelves.length === 0) {
             await initializeShelves(user, shelfSettings.numberOfShelves, shelfSettings.shelfCapacity);
@@ -380,7 +380,7 @@ app.post('/api/books', auth, async function(req, res) {
         // Проверяем, есть ли полки у пользователя
         const existingShelves = await Shelf.findAll({ where: { user: user } });
         
-        // Если полок нет, создаем полку по умолчанию
+        // если нет, создаем
         let targetShelfId = shelfId;
         if (existingShelves.length === 0) {
             const defaultShelf = await Shelf.create({
@@ -399,7 +399,7 @@ app.post('/api/books', auth, async function(req, res) {
                 return res.status(404).json({ error: 'Shelf not found' });
             }
             
-            // Подсчитываем текущее использование полки
+        
             const booksOnShelf = await Book.findAll({ where: { shelfId: targetShelfId } });
             const usedPages = booksOnShelf.reduce((sum, book) => sum + book.pages, 0);
             
@@ -410,7 +410,7 @@ app.post('/api/books', auth, async function(req, res) {
             }
         }
         
-        // Если полка не указана, но есть полки, книга будет распределена автоматически
+        // автоматически распределяем книгу на полку
         const book = await Book.create({ title, pages: pagesNum, user, shelfId: targetShelfId || null });
         res.json({ book });
     } catch (error) {
@@ -471,7 +471,7 @@ app.post('/api/shelves', auth, async function(req, res) {
     }
 });
 
-// Обновление полки (название и вместимость)
+// Обновление полки 
 app.put('/api/shelves/:id', auth, async function(req, res) {
     try {
         const user = req.user.username;
@@ -493,7 +493,7 @@ app.put('/api/shelves/:id', auth, async function(req, res) {
                 return res.status(400).json({ error: 'Capacity must be a positive number' });
             }
             
-            // Проверяем, не превышает ли текущее использование новую вместимость
+            // превышает ли вместимость 
             const booksOnShelf = await Book.findAll({ where: { shelfId: shelfId } });
             const usedPages = booksOnShelf.reduce((sum, book) => sum + book.pages, 0);
             
@@ -513,7 +513,7 @@ app.put('/api/shelves/:id', auth, async function(req, res) {
     }
 });
 
-// Удаление полки
+
 app.delete('/api/shelves/:id', auth, async function(req, res) {
     try {
         const user = req.user.username;
@@ -524,15 +524,15 @@ app.delete('/api/shelves/:id', auth, async function(req, res) {
             return res.status(404).json({ error: 'Shelf not found' });
         }
         
-        // Получаем все книги на этой полке и удаляем их
+       
         const booksOnShelf = await Book.findAll({ where: { shelfId: shelfId } });
         
-        // Удаляем все книги на этой полке
+      
         for (const book of booksOnShelf) {
             await book.destroy();
         }
         
-        // Удаляем полку
+       
         await shelf.destroy();
         res.json({ success: true });
     } catch (error) {
@@ -571,7 +571,6 @@ app.put('/api/books/:id/move', auth, async function(req, res) {
             .filter(b => b.id !== bookId)
             .reduce((sum, b) => sum + b.pages, 0);
         
-        // Проверяем вместимость
         if (usedPages + book.pages > shelf.capacity) {
             return res.status(400).json({ 
                 error: 'Книга не помещается на эту полку. Превышена вместимость полки.' 
